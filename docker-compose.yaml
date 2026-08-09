@@ -1,7 +1,7 @@
 services:
   edcb:
     build: .
-    image: ghcr.io/gigaonion/edcb-linux:latest
+    image: ghcr.io/gigaonion/edcb-linux:v0.0.1
     container_name: edcb
     ports:
       - "5510:5510" # EDCB Web UI (HTTP)
