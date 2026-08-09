@@ -60,9 +60,9 @@ mirakurun_url: 'http://mirakurun:40772/
 
 
 ### コンテナの起動
-まず，KonomiTVをビルドします．
+まず，KonomiTVをビルドした後，起動します．
 ```bash
-docker compose build konomitv
+docker compose build konomitv && docker compose up -d
 ```
 
 ### 初回チャンネル設定・チャンネルスキャン
