@@ -1,0 +1,59 @@
+services:
+  edcb:
+    build: .
+    image: ghcr.io/gigaonion/edcb-linux:latest
+    container_name: edcb
+    ports:
+      - "5510:5510" # EDCB Web UI (HTTP)
+      - "4510:4510" # EDCB Ctrl TCP (KonomiTV等からの制御用)
+    volumes:
+      - ./config:/etc/edcb/user_config
+      - ./data/edcb:/var/local/edcb/data
+      - ./data/rec:/rec
+    environment:
+      - TZ=Asia/Tokyo
+    restart: unless-stopped
+
+  konomitv:
+    image: konomitv
+    container_name: konomitv
+    build:
+      context: ./KonomiTV
+    ports:
+      - "7000:7000"
+    restart: always
+    # ネットワーク設定（必要に応じて host モードに変更可）
+    # network_mode: host
+    volumes:
+      - type: bind
+        source: './konomi-config.yaml'
+        target: '/code/config.yaml'
+      - type: bind
+        source: './KonomiTV/server/data/'
+        target: '/code/server/data/'
+      - type: bind
+        source: './KonomiTV/server/logs/'
+        target: '/code/server/logs/'
+      - type: bind
+        source: './data/rec'
+        target: '/host-rootfs/rec'
+      - type: bind
+        source: './data/pic'
+        target: '/host-rootfs/pic'
+
+    # ==================== ↓↓↓↓↓ ここからGPU設定 ↓↓↓↓↓ ====================
+
+    # Intel Graphics / AMD GPU (QSVEncC / VCEEncC) を使用する場合
+    # devices:
+    #   - '/dev/dri/:/dev/dri/'
+
+    # NVIDIA GPU (NVEncC) を使用する場合
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [compute, utility, video]
+
+    # ==================== ↑↑↑↑↑ ここまでGPU設定 ↑↑↑↑↑ ====================

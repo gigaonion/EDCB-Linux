@@ -1,0 +1,18 @@
+# Volume mount directories
+/data/
+/rec/
+
+# KonomiTV runtime data / logs (if submoduled)
+/KonomiTV/server/data/
+/KonomiTV/server/logs/
+
+# Temporary / OS files
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+*.bak
+
+# IDE files
+.vscode/
+.idea/
