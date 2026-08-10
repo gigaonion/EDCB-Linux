@@ -30,7 +30,7 @@ RUN git clone --recurse-submodules https://github.com/matching/BonDriver_LinuxMi
 
 FROM debian:trixie-slim
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata lua-zlib curl liblua5.2-0 ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
