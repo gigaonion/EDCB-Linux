@@ -61,6 +61,7 @@ mirakurun_url: 'http://mirakurun:40772/
 
 ### コンテナの起動
 まず，KonomiTVをビルドした後，起動します．
+
 ```bash
 docker compose build konomitv && docker compose up -d
 ```
@@ -82,7 +83,7 @@ docker exec -it edcb /usr/local/bin/EpgDataCap_Bon -d BonDriver_LinuxMirakc.so -
 docker restart edcb
 ```
 
-    再起動後，EDCBのWeb UI（`http://<ホストマシンのIPアドレス>:5510`）にアクセスし，EPG 取得を実行して番組表データを取得してください．
+再起動後，EDCBのWeb UI（`http://<ホストマシンのIPアドレス>:5510`）にアクセスし，EPG 取得を実行して番組表データを取得してください．
 
 
 ## ライセンス&クレジット
