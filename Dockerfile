@@ -13,7 +13,14 @@ RUN git clone --recurse-submodules https://github.com/tkntrec/EDCB && \
     mkdir -p /var/local/edcb && \
     make setup_ini && \
     mkdir -p /etc/edcb/template && \
+    sed -i -e 's/^ALLOW_SETTING=.*/ALLOW_SETTING=true/' \
+    /var/local/edcb/HttpPublic/legacy/util.lua && \
     cp -r /var/local/edcb/* /etc/edcb/template/
+
+RUN git clone --recurse-submodules  https://github.com/EMWUI/EDCB_Material_WebUI.git && \
+    cd EDCB_Material_WebUI && \
+    cp -r HttpPublic /var/local/edcb/ && \
+    cp -r Setting /var/local/edcb/
 
 RUN git clone --recurse-submodules https://github.com/matching/BonDriver_LinuxMirakc.git && \
     cd BonDriver_LinuxMirakc && \
@@ -24,7 +31,7 @@ RUN git clone --recurse-submodules https://github.com/matching/BonDriver_LinuxMi
 FROM debian:trixie-slim
 
 RUN apt-get update && apt-get install -y \
-    tzdata lua-zlib curl liblua5.2-0 \
+    tzdata lua-zlib curl liblua5.2-0 ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/bin/ /usr/local/bin/

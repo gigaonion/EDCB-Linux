@@ -116,6 +116,8 @@ docker restart edcb
 - [EDCB (tkntrec 版)](https://github.com/tkntrec/EDCB)
   - 開発者: xtne6 氏, xtne6f 氏, tkntrec 氏 ほか開発者の皆様
   - ライセンス: xtne6氏の利用規約により非商用・フリーソフト限定と規定されています．本リポジトリ全体の環境を利用・再配布する際はご注意ください．
+- [EDCB_Material_WebUI](https://github.com/EMWUI/EDCB_Material_WebUI)
+  - 開発者: EMWUI 氏 ([License](https://github.com/EMWUI/EDCB_Material_WebUI/blob/master/LICENSE))
 - [BonDriver_LinuxMirakc](https://github.com/matching/BonDriver_LinuxMirakc)
   - 開発者: matching 氏 ([MIT License](https://github.com/matching/BonDriver_LinuxMirakc/blob/master/LICENSE))
 - [KonomiTV](https://github.com/tsukumijima/KonomiTV)
