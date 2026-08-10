@@ -81,16 +81,17 @@ docker compose build konomitv && docker compose up -d
 ```
 
 ### 初回チャンネル設定・チャンネルスキャン
-
-本リポジトリでは，初期状態の `config/Setting/` ディレクトリにはチャンネル設定ファイルを同梱していません．
-
+本リポジトリは，MirakurunとEDCBを使用する関係で，スキャンを2回行う必要があります．
+#### Mirakurn
+`http://<ホストマシンのIPアドレス>:40772/config/channels`をブラウザで開き，スキャンを開始します．
+#### EDCB
 ご自身の利用環境に合わせて，以下のいずれかの方法でチャンネル設定を行ってください．
 
 1. 既存のチャンネル設定ファイルを配置する場合
    ご自身の環境で作成した`ChSet4.txt` / `ChSet5.txt`や`BonDriver_LinuxMirakc(LinuxMirakc).ChSet4.txt`などの設定ファイルを`./config/Setting/`ディレクトリ内に配置してからコンテナを起動してください．
 
 2. 初回起動後に EPG 取得・スキャンを行う場合
-   コンテナを起動後，ホストマシンのターミナルから以下のコマンドを実行してチャンネルスキャンを開始し，完了したら，コンテナを再起動します．．
+   コンテナを起動後，ホストマシンのターミナルから以下のコマンドを実行してチャンネルスキャンを開始し，完了したら，コンテナを再起動します．
 
 ```bash
 docker exec -it edcb /usr/local/bin/EpgDataCap_Bon -d BonDriver_LinuxMirakc.so -chscan
