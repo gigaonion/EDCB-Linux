@@ -110,6 +110,8 @@ docker restart edcb
 本リポジトリは，以下のオープンソースプロジェクトを組み込み・連携して構成されています．
 リポジトリの維持と，DTVコミュニティの発展への多大なご貢献に心より感謝申し上げます．
 
+- [Mirakurun](https://github.com/chinachu/mirakurun)
+  - 開発者: Chinachu 氏 ([Apache-2.0 license](https://github.com/chinachu/mirakurun/blob/master/LICENSE))
 - [EDCB (tkntrec 版)](https://github.com/tkntrec/EDCB)
   - 開発者: xtne6 氏, xtne6f 氏, tkntrec 氏 ほか開発者の皆様
   - ライセンス: xtne6氏の利用規約により非商用・フリーソフト限定と規定されています．本リポジトリ全体の環境を利用・再配布する際はご注意ください．
