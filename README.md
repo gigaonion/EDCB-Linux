@@ -1,6 +1,6 @@
 # EDCB-Linux Docker
 
-[tkntrec版 EDCB](https://github.com/tkntrec/EDCB)および[BonDriver_LinuxMirakc](https://github.com/matching/BonDriver_LinuxMirakc) を組み込んだDocker環境です．すでに別環境やLAN内で起動している Mirakurun / Mirakc と接続して動作させることができるほか，ホストマシンにチューナーが接続されている場合は，本Docker環境上でそのまま[Mirakurun](https://github.com/chinachu/mirakurun)コンテナを起動して一括で運用することも可能です．
+[tkntrec版 EDCB](https://github.com/tkntrec/EDCB)，[EDCB_Material_WebUI](https://github.com/EMWUI/EDCB_Material_WebUI)および[BonDriver_LinuxMirakc](https://github.com/matching/BonDriver_LinuxMirakc) を組み込んだDocker環境です．すでに別環境やLAN内で起動している Mirakurun / Mirakc と接続して動作させることができるほか，ホストマシンにチューナーが接続されている場合は，本Docker環境上でそのまま[Mirakurun](https://github.com/chinachu/mirakurun)コンテナを起動して一括で運用することも可能です．
 
 tsukumijima氏の[KonomiTV](https://github.com/tsukumijima/KonomiTV)との連携を前提として構築されており，Gitのサブモジュールとして取り込むことで，EDCBによる録画管理とKonomiTVによる視聴環境をまとめて起動することができます(注: このプロジェクトはKonomiTVとは一切の関係がありません)．KonomiTVに関しての設定は非常に複雑なので，一度[公式Readme](https://github.com/tsukumijima/KonomiTV)を読んでからの構築を強く推奨します．
 
