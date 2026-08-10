@@ -98,7 +98,7 @@ docker exec -it edcb /usr/local/bin/EpgDataCap_Bon -d BonDriver_LinuxMirakc.so -
 docker restart edcb
 ```
 
-再起動後，EDCBのWeb UI（`http://<ホストマシンのIPアドレス>:5510`）にアクセスし，EPG 取得を実行して番組表データを取得してください．
+再起動後，EDCBのWeb UI（`http://<ホストマシンのIPアドレス>:5510/E3/#epg`）にアクセスし，EPG 取得を実行して番組表データを取得してください．
 
 
 ## ライセンス&クレジット
