@@ -1,8 +1,59 @@
 services:
+  mirakurun:
+    image: chinachu/mirakurun:${MIRAKURUN_IMAGE_TAG:-latest}
+    environment:
+      TZ: Asia/Tokyo
+      # pcscd を無効にする場合は "1"
+      DISABLE_PCSCD: "${DISABLE_PCSCD:-0}"
+      # B25 テストコマンドの取得とビルドを無効にする場合は "1"
+      DISABLE_B25_TEST: "${DISABLE_B25_TEST:-0}"
+      # `network_mode: host`を有効化する場合はアンコメント
+      #DOCKER_NETWORK: host
+      # ブラウザから IP アドレス以外でアクセスする場合はホスト名を設定
+      #hostname: localhost
+      # --
+      # for debug
+      #LOG_LEVEL: "3"
+      #DEBUG: "true"
+
+    # `devices` を全てコメントアウトした場合は `devices:` もコメントアウト
+    devices:
+      # カードリーダーを使う場合
+      - /dev/bus:/dev/bus
+      # DVB チューナーを使う場合
+      - /dev/dvb:/dev/dvb
+    volumes:
+      - ./data/mirakurun/run:/var/run
+      - ./data/mirakurun/opt:/opt
+      - ./data/mirakurun/config:/app-config
+      - ./data/mirakurun/data:/app-data
+      # ホストの pcscd を使う場合
+      #- /var/run/pcscd/pcscd.comm:/var/run/pcscd/pcscd.comm
+      # 全てのデバイスを追加 (開発用)
+      - /dev:/dev
+
+    container_name: mirakurun
+    # 必要に応じてアンコメント
+    # network_mode: host
+    cap_add:
+      - SYS_ADMIN
+      - SYS_NICE
+    device_cgroup_rules:
+      - 'c *:* rmw'
+    tmpfs:
+      - /tmp
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-file: "1"
+        max-size: 10m
   edcb:
     build: .
     image: ghcr.io/gigaonion/edcb-linux:v0.0.1
     container_name: edcb
+    # 必要に応じてアンコメント
+    # network_mode: host
     ports:
       - "5510:5510" # EDCB Web UI (HTTP)
       - "4510:4510" # EDCB Ctrl TCP (KonomiTV等からの制御用)

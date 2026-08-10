@@ -1,6 +1,6 @@
 # EDCB-Linux Docker
 
-[tkntrec版 EDCB](https://github.com/tkntrec/EDCB)および[BonDriver_LinuxMirakc](https://github.com/matching/BonDriver_LinuxMirakc) を組み込んだDocker環境です．LAN(または，同一のDockerネットワーク)内で起動しているMirakurun / Miracと接続して動作させることができます．
+[tkntrec版 EDCB](https://github.com/tkntrec/EDCB)および[BonDriver_LinuxMirakc](https://github.com/matching/BonDriver_LinuxMirakc) を組み込んだDocker環境です．すでに別環境やLAN内で起動している Mirakurun / Mirakc と接続して動作させることができるほか，ホストマシンにチューナーが接続されている場合は，本Docker環境上でそのまま[Mirakurun](https://github.com/chinachu/mirakurun)コンテナを起動して一括で運用することも可能です．
 
 tsukumijima氏の[KonomiTV](https://github.com/tsukumijima/KonomiTV)との連携を前提として構築されており，Gitのサブモジュールとして取り込むことで，EDCBによる録画管理とKonomiTVによる視聴環境をまとめて起動することができます(注: このプロジェクトはKonomiTVとは一切の関係がありません)．KonomiTVに関しての設定は非常に複雑なので，一度[公式Readme](https://github.com/tsukumijima/KonomiTV)を読んでからの構築を強く推奨します．
 
@@ -20,7 +20,7 @@ git submodule update --init --recursive
 
 ### EDCB 設定の調整
 
-`config/BonDriver_LinuxMirakc.so.ini`の`SERVER_HOST`および`SERVER_PORT`をmirakc/Mirakurunの接続先IPに合わせて編集します．
+`config/BonDriver_LinuxMirakc.so.ini`の`SERVER_HOST`および`SERVER_PORT`をmirakc/Mirakurunの接続先IPに合わせて編集します（Mirakurunコンテナを一緒に起動する場合は変更の必要はありません）．
 
 ```ini
 [GLOBAL]
@@ -43,8 +43,22 @@ GetEpg=1
 mirakurun_url: 'http://mirakurun:40772/
 ```
 
-### ボリュームのマウント
-`docker-compose.yaml`のマウントポイントをご自身の環境に合わせて変更してください．
+### docker-compose.yamlの編集
+既に他にMirakurunが起動している場合は，mirakurunのセクションを丸ごと削除します．
+```yaml
+services:
+# ここから
+  mirakurun:
+    image: chinachu/mirakurun:${MIRAKURUN_IMAGE_TAG:-latest}
+#～～中略～～
+    logging:
+      driver: json-file
+      options:
+        max-file: "1"
+        max-size: 10m
+# ここまで
+```
+また，マウントポイントをご自身の環境に合わせて変更してください．
 
 - EDCB 領域
   - `./config` ➔ `/etc/edcb/user_config` (設定ファイル)
