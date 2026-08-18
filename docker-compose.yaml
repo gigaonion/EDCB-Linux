@@ -50,7 +50,7 @@ services:
         max-size: 10m
   edcb:
     build: .
-    image: ghcr.io/gigaonion/edcb-linux:0.1.0
+    image: ghcr.io/gigaonion/edcb-linux:0.1.1
     container_name: edcb
     # 必要に応じてアンコメント
     # network_mode: host
