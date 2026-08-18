@@ -6,8 +6,11 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /src
 
+COPY patches/ /patches/
 RUN git clone --recurse-submodules https://github.com/tkntrec/EDCB && \
-    cd EDCB/Document/Unix && \
+    cd EDCB && \
+    (for p in /patches/*.patch; do [ -f "$p" ] && git apply "$p" || true; done) && \
+    cd Document/Unix && \
     make install && \
     make extra && make install_extra && \
     mkdir -p /var/local/edcb && \

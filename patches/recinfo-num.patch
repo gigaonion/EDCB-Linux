@@ -1,0 +1,273 @@
+diff --git a/EpgTimerSrv/EpgTimerSrv/ReserveManager.cpp b/EpgTimerSrv/EpgTimerSrv/ReserveManager.cpp
+index c9e3895..34f9221 100644
+--- a/EpgTimerSrv/EpgTimerSrv/ReserveManager.cpp
++++ b/EpgTimerSrv/EpgTimerSrv/ReserveManager.cpp
+@@ -1,4 +1,4 @@
+-﻿#include "stdafx.h"
++#include "stdafx.h"
+ #include "ReserveManager.h"
+ #include "../../Common/PathUtil.h"
+ #include "../../Common/TimeUtil.h"
+@@ -1956,6 +1956,219 @@ bool CReserveManager::GetRecFilePath(DWORD reserveID, wstring& filePath) const
+ 	return false;
+ }
+ 
++static int ParseKanjiNumber(const wstring& s)
++{
++	if( s.empty() ) return -1;
++	bool hasUnit = false;
++	for( wchar_t c : s ){
++		if( c == L'十' || c == L'百' || c == L'千' || c == L'拾' ){
++			hasUnit = true;
++			break;
++		}
++	}
++	if( hasUnit ){
++		int total = 0;
++		int current = 0;
++		for( wchar_t c : s ){
++			int digit = 0;
++			switch(c){
++				case L'〇': case L'零': digit = 0; break;
++				case L'一': case L'壱': digit = 1; break;
++				case L'二': case L'弐': digit = 2; break;
++				case L'三': case L'参': digit = 3; break;
++				case L'四': digit = 4; break;
++				case L'五': digit = 5; break;
++				case L'六': digit = 6; break;
++				case L'七': digit = 7; break;
++				case L'八': digit = 8; break;
++				case L'九': digit = 9; break;
++				case L'十': case L'拾':
++					total += (current == 0 ? 1 : current) * 10;
++					current = 0;
++					continue;
++				case L'百':
++					total += (current == 0 ? 1 : current) * 100;
++					current = 0;
++					continue;
++				case L'千':
++					total += (current == 0 ? 1 : current) * 1000;
++					current = 0;
++					continue;
++				default:
++					return -1;
++			}
++			current = digit;
++		}
++		total += current;
++		return total;
++	}else{
++		int total = 0;
++		for( wchar_t c : s ){
++			int digit = 0;
++			switch(c){
++				case L'〇': case L'零': digit = 0; break;
++				case L'一': case L'壱': digit = 1; break;
++				case L'二': case L'弐': digit = 2; break;
++				case L'三': case L'参': digit = 3; break;
++				case L'四': digit = 4; break;
++				case L'五': digit = 5; break;
++				case L'六': digit = 6; break;
++				case L'七': digit = 7; break;
++				case L'八': digit = 8; break;
++				case L'九': digit = 9; break;
++				default: return -1;
++			}
++			total = total * 10 + digit;
++		}
++		return total;
++	}
++}
++
++static void NormalizeEventNameForRecCheck(wstring& str)
++{
++	// 1. 全角英数・記号の半角化および小文字化
++	for( auto& c : str ){
++		if( L'０' <= c && c <= L'９' ){
++			c = c - L'０' + L'0';
++		}else if( L'Ａ' <= c && c <= L'Ｚ' ){
++			c = c - L'Ａ' + L'a';
++		}else if( L'ａ' <= c && c <= L'ｚ' ){
++			c = c - L'ａ' + L'a';
++		}else if( c == L'　' ){
++			c = L' ';
++		}
++	}
++
++	// 2. 丸数字 (①〜⑳, ❶〜❿) の半角数字化
++	static const struct { wchar_t from; int num; } circleNumTable[] = {
++		{ L'①', 1 }, { L'②', 2 }, { L'③', 3 }, { L'④', 4 }, { L'⑤', 5 },
++		{ L'⑥', 6 }, { L'⑦', 7 }, { L'⑧', 8 }, { L'⑨', 9 }, { L'⑩', 10 },
++		{ L'⑪', 11 }, { L'⑫', 12 }, { L'⑬', 13 }, { L'⑭', 14 }, { L'⑮', 15 },
++		{ L'⑯', 16 }, { L'⑰', 17 }, { L'⑱', 18 }, { L'⑲', 19 }, { L'⑳', 20 },
++		{ L'❶', 1 }, { L'❷', 2 }, { L'❸', 3 }, { L'❹', 4 }, { L'❺', 5 },
++		{ L'❻', 6 }, { L'❼', 7 }, { L'❽', 8 }, { L'❾', 9 }, { L'❿', 10 },
++	};
++	for( size_t i = 0; i < str.size(); i++ ){
++		for( const auto& item : circleNumTable ){
++			if( str[i] == item.from ){
++				WCHAR numBuf[32];
++				swprintf_s(numBuf, L" %d ", item.num);
++				str.replace(i, 1, numBuf);
++				i += wcslen(numBuf) - 1;
++				break;
++			}
++		}
++	}
++
++	// 3. 汎用「第 + (数字|漢数字) + 任意の助数詞」および漢数字話数の正規化
++	try{
++		// 3-a. 「第」で始まるパターン: 第\s*([0-9]+|[一二三四五六七八九十百千〇零壱弐参拾]+) + 任意の助数詞
++		std::wregex reDai(L"第\\s*([0-9]+|[一二三四五六七八九十百千〇零壱弐参拾]+)(?:\\s*[^\\s0-9a-zA-Z\\[\\]\\(\\)\\（\\）\\「\\」\\『\\』\\【\\】\\〔\\〕\\〈\\〉\\《\\》▽▼★☆◆◇●○■□・:;／/\\\\~〜～]*)?");
++		std::wsmatch m;
++		wstring result;
++		auto it = str.cbegin();
++		while( std::regex_search(it, str.cend(), m, reDai) ){
++			result.append(it, it + m.position(0));
++			wstring numStr = m[1].str();
++			int num = -1;
++			if( iswdigit(numStr[0]) ){
++				num = (int)wcstol(numStr.c_str(), NULL, 10);
++			}else{
++				num = ParseKanjiNumber(numStr);
++			}
++			if( num >= 0 ){
++				WCHAR numBuf[32];
++				swprintf_s(numBuf, L" %d ", num);
++				result += numBuf;
++			}else{
++				result += m[0].str();
++			}
++			it += m.position(0) + m.length(0);
++		}
++		result.append(it, str.cend());
++		str.swap(result);
++
++		// 3-b. 助数詞が直後に付く漢数字単体
++		std::wregex reKanjiUnit(L"([一二三四五六七八九十百千〇零壱弐参拾]+)\\s*([話回夜節巻部章幕弾局戦篇])");
++		it = str.cbegin();
++		result.clear();
++		while( std::regex_search(it, str.cend(), m, reKanjiUnit) ){
++			result.append(it, it + m.position(0));
++			int num = ParseKanjiNumber(m[1].str());
++			if( num >= 0 ){
++				WCHAR numBuf[32];
++				swprintf_s(numBuf, L" %d ", num);
++				result += numBuf;
++			}else{
++				result += m[0].str();
++			}
++			it += m.position(0) + m.length(0);
++		}
++		result.append(it, str.cend());
++		str.swap(result);
++
++		// 3-c. [#＃♯]\s*(\d+) -> " $1 "
++		str = std::regex_replace(str, std::wregex(L"[#＃♯]\\s*([0-9]+)"), L" $1 ");
++
++		// 3-d. 括弧囲み数字
++		std::wregex reBracket(L"[\\(\\[（［【〔〈《]\\s*([0-9]+|[一二三四五六七八九十百千〇零壱弐参拾]+)\\s*[\\)\\]）］】〕〉》]");
++		it = str.cbegin();
++		result.clear();
++		while( std::regex_search(it, str.cend(), m, reBracket) ){
++			result.append(it, it + m.position(0));
++			wstring numStr = m[1].str();
++			int num = -1;
++			if( iswdigit(numStr[0]) ){
++				num = (int)wcstol(numStr.c_str(), NULL, 10);
++			}else{
++				num = ParseKanjiNumber(numStr);
++			}
++			if( num >= 0 ){
++				WCHAR numBuf[32];
++				swprintf_s(numBuf, L" %d ", num);
++				result += numBuf;
++			}else{
++				result += m[0].str();
++			}
++			it += m.position(0) + m.length(0);
++		}
++		result.append(it, str.cend());
++		str.swap(result);
++
++	}catch( std::exception& ){}
++
++	// 4. 区切り記号・装飾記号を半角スペースに統一
++	static const wchar_t symbols[] = L"▽▼★☆◆◇●○■□▲△・:;／/\\_＿~〜～「」『』";
++	for( size_t i = 0; i < str.size(); i++ ){
++		for( size_t j = 0; symbols[j] != L'\0'; j++ ){
++			if( str[i] == symbols[j] ){
++				str[i] = L' ';
++				break;
++			}
++		}
++	}
++
++	// 5. 連続スペースの集約および前後のトリム
++	wstring cleaned;
++	cleaned.reserve(str.size());
++	bool inSpace = true;
++	for( wchar_t c : str ){
++		if( c == L' ' || c == L'\t' ){
++			if( !inSpace ){
++				cleaned.push_back(L' ');
++				inSpace = true;
++			}
++		}else{
++			cleaned.push_back(c);
++			inSpace = false;
++		}
++	}
++	while( !cleaned.empty() && cleaned.back() == L' ' ){
++		cleaned.pop_back();
++	}
++	str.swap(cleaned);
++}
++
+ bool CReserveManager::IsFindRecEventInfo(const EPGDB_EVENT_INFO& info, WORD chkDay) const
+ {
+ 	lock_recursive_mutex lock(this->managerLock);
+@@ -1995,6 +2208,7 @@ bool CReserveManager::IsFindRecEventInfo(const EPGDB_EVENT_INFO& info, WORD chkD
+ 					infoEventName = L"";
+ 				}
+ 			}
++			NormalizeEventNameForRecCheck(infoEventName);
+ 			if( infoEventName.empty() == false && info.StartTimeFlag != 0 ){
+ 				LONGLONG chkStartTime = ConvertI64Time(info.start_time) - (chkDay >= 20000 ? chkDay % 10000 : chkDay) * 24 * 60 * 60 * I64_1SEC;
+ 				if( chkStartTime <= this->recInfo2SearchStartTime ){
+@@ -2006,9 +2220,8 @@ bool CReserveManager::IsFindRecEventInfo(const EPGDB_EVENT_INFO& info, WORD chkD
+ 						if( ConvertI64Time(item.second.startTime) <= this->recInfo2SearchStartTime ){
+ 							continue;
+ 						}
+-						if( this->setting.recInfo2RegExp.empty() ){
+-							this->recInfo2SearchCache.emplace_back(item.second.eventName, item.first);
+-						}else{
++						wstring eventName = item.second.eventName;
++						if( this->setting.recInfo2RegExp.empty() == false ){
+ 							//イベント名を置換
+ #if !defined(EPGDB_STD_WREGEX) && defined(_WIN32)
+ 							CEpgDBManager::OleCharPtr rplFrom(SysAllocString(item.second.eventName.c_str()), SysFreeString);
+@@ -2017,16 +2230,20 @@ bool CReserveManager::IsFindRecEventInfo(const EPGDB_EVENT_INFO& info, WORD chkD
+ 							if( rplFrom && rplTo && SUCCEEDED(regExp->Replace(rplFrom.get(), rplTo.get(), &rpl_)) ){
+ 								CEpgDBManager::OleCharPtr rpl(rpl_, SysFreeString);
+ 								if( SysStringLen(rpl.get()) ){
+-									this->recInfo2SearchCache.emplace_back(rpl.get(), item.first);
++									eventName = rpl.get();
+ 								}
+ 							}
+ #else
+ 							try{
+-								this->recInfo2SearchCache.emplace_back(std::regex_replace(item.second.eventName, re, wstring()), item.first);
++								eventName = std::regex_replace(eventName, re, wstring());
+ 							}catch( std::regex_error& ){
+ 							}
+ #endif
+ 						}
++						NormalizeEventNameForRecCheck(eventName);
++						if( eventName.empty() == false ){
++							this->recInfo2SearchCache.emplace_back(std::move(eventName), item.first);
++						}
+ 					}
+ 					std::sort(this->recInfo2SearchCache.begin(), this->recInfo2SearchCache.end());
+ 				}
