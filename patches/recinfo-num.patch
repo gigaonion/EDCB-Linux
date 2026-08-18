@@ -1,5 +1,5 @@
 diff --git a/EpgTimerSrv/EpgTimerSrv/ReserveManager.cpp b/EpgTimerSrv/EpgTimerSrv/ReserveManager.cpp
-index c9e3895..34f9221 100644
+index c9e3895..dc62e30 100644
 --- a/EpgTimerSrv/EpgTimerSrv/ReserveManager.cpp
 +++ b/EpgTimerSrv/EpgTimerSrv/ReserveManager.cpp
 @@ -1,4 +1,4 @@
@@ -8,7 +8,23 @@ index c9e3895..34f9221 100644
  #include "ReserveManager.h"
  #include "../../Common/PathUtil.h"
  #include "../../Common/TimeUtil.h"
-@@ -1956,6 +1956,219 @@ bool CReserveManager::GetRecFilePath(DWORD reserveID, wstring& filePath) const
+@@ -111,6 +111,7 @@ void CReserveManager::ReloadSetting(const CEpgTimerSrvSetting::SETTING& s)
+ 
+ 	this->recInfo2Text.SetKeepCount(s.recInfo2Max);
+ 	//検索用リストを再構築するため
++	this->recInfo2SearchCache.clear();
+ 	this->recInfo2SearchStartTime = LLONG_MAX;
+ 
+ 	for( const auto& tunerBank : this->tunerBankMap ){
+@@ -1341,6 +1342,7 @@ void CReserveManager::ProcessRecEnd(const vector<CTunerBankCtrl::CHECK_RESULT>&
+ 				item.eventName = itrRet->epgEventName;
+ 				this->recInfo2Text.Add(item);
+ 				//検索用リストを再構築するため
++				this->recInfo2SearchCache.clear();
+ 				this->recInfo2SearchStartTime = LLONG_MAX;
+ 			}
+ 
+@@ -1956,6 +1958,226 @@ bool CReserveManager::GetRecFilePath(DWORD reserveID, wstring& filePath) const
  	return false;
  }
  
@@ -82,6 +98,13 @@ index c9e3895..34f9221 100644
 +
 +static void NormalizeEventNameForRecCheck(wstring& str)
 +{
++	// 0. 改行文字 (\r, \n) の除去
++	for( auto& c : str ){
++		if( c == L'\r' || c == L'\n' ){
++			c = L' ';
++		}
++	}
++
 +	// 1. 全角英数・記号の半角化および小文字化
 +	for( auto& c : str ){
 +		if( L'０' <= c && c <= L'９' ){
@@ -228,27 +251,33 @@ index c9e3895..34f9221 100644
  bool CReserveManager::IsFindRecEventInfo(const EPGDB_EVENT_INFO& info, WORD chkDay) const
  {
  	lock_recursive_mutex lock(this->managerLock);
-@@ -1995,6 +2208,7 @@ bool CReserveManager::IsFindRecEventInfo(const EPGDB_EVENT_INFO& info, WORD chkD
+@@ -1995,21 +2217,13 @@ bool CReserveManager::IsFindRecEventInfo(const EPGDB_EVENT_INFO& info, WORD chkD
  					infoEventName = L"";
  				}
  			}
 +			NormalizeEventNameForRecCheck(infoEventName);
  			if( infoEventName.empty() == false && info.StartTimeFlag != 0 ){
  				LONGLONG chkStartTime = ConvertI64Time(info.start_time) - (chkDay >= 20000 ? chkDay % 10000 : chkDay) * 24 * 60 * 60 * I64_1SEC;
- 				if( chkStartTime <= this->recInfo2SearchStartTime ){
-@@ -2006,9 +2220,8 @@ bool CReserveManager::IsFindRecEventInfo(const EPGDB_EVENT_INFO& info, WORD chkD
- 						if( ConvertI64Time(item.second.startTime) <= this->recInfo2SearchStartTime ){
- 							continue;
- 						}
+-				if( chkStartTime <= this->recInfo2SearchStartTime ){
+-					//検索用にイベント名でソートしたリストを構築する
+-					this->recInfo2SearchCache.clear();
+-					//時間的にマッチし得ないものは除外する
+-					this->recInfo2SearchStartTime = chkStartTime - 10 * 24 * 60 * 60 * I64_1SEC;
++				if( this->recInfo2SearchCache.empty() ){
+ 					for( const auto& item : this->recInfo2Text.GetMap() ){
+-						if( ConvertI64Time(item.second.startTime) <= this->recInfo2SearchStartTime ){
+-							continue;
+-						}
 -						if( this->setting.recInfo2RegExp.empty() ){
 -							this->recInfo2SearchCache.emplace_back(item.second.eventName, item.first);
 -						}else{
+-							//イベント名を置換
 +						wstring eventName = item.second.eventName;
 +						if( this->setting.recInfo2RegExp.empty() == false ){
- 							//イベント名を置換
  #if !defined(EPGDB_STD_WREGEX) && defined(_WIN32)
  							CEpgDBManager::OleCharPtr rplFrom(SysAllocString(item.second.eventName.c_str()), SysFreeString);
-@@ -2017,16 +2230,20 @@ bool CReserveManager::IsFindRecEventInfo(const EPGDB_EVENT_INFO& info, WORD chkD
+ 							CEpgDBManager::OleCharPtr rplTo(SysAllocString(L""), SysFreeString);
+@@ -2017,16 +2231,20 @@ bool CReserveManager::IsFindRecEventInfo(const EPGDB_EVENT_INFO& info, WORD chkD
  							if( rplFrom && rplTo && SUCCEEDED(regExp->Replace(rplFrom.get(), rplTo.get(), &rpl_)) ){
  								CEpgDBManager::OleCharPtr rpl(rpl_, SysFreeString);
  								if( SysStringLen(rpl.get()) ){
