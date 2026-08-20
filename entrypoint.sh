@@ -1,20 +1,24 @@
 #!/bin/sh
 set -e
 
+PUID=${PUID:-0}
+PGID=${PGID:-0}
+
 USER_CONFIG_DIR="/etc/edcb/user_config"
 TEMPLATE_DIR="/etc/edcb/template"
 TARGET_DIR="/var/local/edcb"
 
-echo "[entrypoint] Setting up shared library search path..."
-echo "/usr/local/lib/edcb" > /etc/ld.so.conf.d/edcb.conf
-ldconfig
+# root以外が指定された場合、edcbユーザーのUID/GIDを動的に変更
+if [ "$PUID" != "0" ] && [ "$PGID" != "0" ]; then
+    groupmod -o -g "$PGID" edcb
+    usermod -o -u "$PUID" -g "$PGID" edcb
+fi
 
-echo "[entrypoint] Starting initialization..."
+echo "[entrypoint] Starting initialization (Running as UID: $PUID, GID: $PGID)..."
 mkdir -p "$USER_CONFIG_DIR"
 mkdir -p "$USER_CONFIG_DIR/Setting"
 mkdir -p "$TARGET_DIR"
 
-# Ensure BonDriver_LinuxMirakc.so and SendTSTCP.so are linked in TARGET_DIR
 ln -sf /usr/local/lib/edcb/BonDriver_LinuxMirakc.so "$TARGET_DIR/BonDriver_LinuxMirakc.so"
 ln -sf /usr/local/lib/edcb/SendTSTCP.so "$TARGET_DIR/SendTSTCP.so"
 
@@ -37,8 +41,8 @@ done
 if [ -d "$USER_CONFIG_DIR/Setting" ]; then
     mkdir -p "$TARGET_DIR/Setting"
     mkdir -p "$TARGET_DIR/data"
-    cp -rn "$USER_CONFIG_DIR/Setting/"* "$TARGET_DIR/Setting/" 2>/dev/null || true
-    cp -rn "$USER_CONFIG_DIR/Setting/"* "$TARGET_DIR/data/" 2>/dev/null || true
+    cp -rn "$USER_CONFIG_DIR/Setting/"* "$TARGET_DIR/Setting/"
+    cp -rn "$USER_CONFIG_DIR/Setting/"* "$TARGET_DIR/data/"
 fi
 
 if [ -f "$USER_CONFIG_DIR/BonDriver_LinuxMirakc.so.ini" ]; then
@@ -57,5 +61,14 @@ if [ ! -d "$TARGET_DIR/HttpPublic" ] && [ -d "$TEMPLATE_DIR/HttpPublic" ]; then
     cp -r "$TEMPLATE_DIR/HttpPublic" "$TARGET_DIR/HttpPublic"
 fi
 
+# 内部ディレクトリの所有権を調整
+if [ "$PUID" != "0" ]; then
+    chown -R "$PUID:$PGID" /etc/edcb /var/local/edcb
+fi
+
 echo "[entrypoint] Starting EpgTimerSrv..."
-exec "$@"
+if [ "$PUID" = "0" ]; then
+    exec "$@"
+else
+    exec gosu edcb "$@"
+fi

@@ -34,8 +34,15 @@ RUN git clone --recurse-submodules https://github.com/matching/BonDriver_LinuxMi
 FROM debian:trixie-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    tzdata lua-zlib curl liblua5.2-0 \
+    tzdata lua-zlib curl liblua5.2-0 ca-certificates gosu \
     && rm -rf /var/lib/apt/lists/*
+
+# 共有ライブラリ検索パスをビルド時に設定
+RUN echo "/usr/local/lib/edcb" > /etc/ld.so.conf.d/edcb.conf && ldconfig
+
+# デフォルトの一般ユーザーを作成
+RUN groupadd -g 1000 edcb && \
+    useradd -u 1000 -g edcb -m -s /bin/sh edcb
 
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 COPY --from=builder /usr/local/lib/edcb/ /usr/local/lib/edcb/
