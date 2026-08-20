@@ -8,10 +8,16 @@ USER_CONFIG_DIR="/etc/edcb/user_config"
 TEMPLATE_DIR="/etc/edcb/template"
 TARGET_DIR="/var/local/edcb"
 
-# root以外が指定された場合、edcbユーザーのUID/GIDを動的に変更
 if [ "$PUID" != "0" ] && [ "$PGID" != "0" ]; then
-    groupmod -o -g "$PGID" edcb
-    usermod -o -u "$PUID" -g "$PGID" edcb
+    # GID が存在しなければ作成
+    if ! getent group "$PGID" >/dev/null 2>&1; then
+        groupadd -g "$PGID" edcb 2>/dev/null || true
+    fi
+
+    # UID が存在しなければ作成
+    if ! getent passwd "$PUID" >/dev/null 2>&1; then
+        useradd -u "$PUID" -g "$PGID" -m -s /bin/sh edcb 2>/dev/null || true
+    fi
 fi
 
 echo "[entrypoint] Starting initialization (Running as UID: $PUID, GID: $PGID)..."
@@ -19,6 +25,7 @@ mkdir -p "$USER_CONFIG_DIR"
 mkdir -p "$USER_CONFIG_DIR/Setting"
 mkdir -p "$TARGET_DIR"
 
+# Ensure BonDriver_LinuxMirakc.so and SendTSTCP.so are linked in TARGET_DIR
 ln -sf /usr/local/lib/edcb/BonDriver_LinuxMirakc.so "$TARGET_DIR/BonDriver_LinuxMirakc.so"
 ln -sf /usr/local/lib/edcb/SendTSTCP.so "$TARGET_DIR/SendTSTCP.so"
 
@@ -41,13 +48,13 @@ done
 if [ -d "$USER_CONFIG_DIR/Setting" ]; then
     mkdir -p "$TARGET_DIR/Setting"
     mkdir -p "$TARGET_DIR/data"
-    cp -rn "$USER_CONFIG_DIR/Setting/"* "$TARGET_DIR/Setting/"
-    cp -rn "$USER_CONFIG_DIR/Setting/"* "$TARGET_DIR/data/"
+    cp -rn "$USER_CONFIG_DIR/Setting/"* "$TARGET_DIR/Setting/" 2>/dev/null || true
+    cp -rn "$USER_CONFIG_DIR/Setting/"* "$TARGET_DIR/data/" 2>/dev/null || true
 fi
 
 if [ -f "$USER_CONFIG_DIR/BonDriver_LinuxMirakc.so.ini" ]; then
     echo "[entrypoint] Copying BonDriver_LinuxMirakc.so.ini"
-    cp -f "$USER_CONFIG_DIR/BonDriver_LinuxMirakc.so.ini" /usr/local/lib/edcb/BonDriver_LinuxMirakc.so.ini
+    cp -f "$USER_CONFIG_DIR/BonDriver_LinuxMirakc.so.ini" /usr/local/lib/edcb/BonDriver_LinuxMirakc.so.ini 2>/dev/null || true
     cp -f "$USER_CONFIG_DIR/BonDriver_LinuxMirakc.so.ini" "$TARGET_DIR/BonDriver_LinuxMirakc.so.ini"
 fi
 
@@ -63,12 +70,12 @@ fi
 
 # 内部ディレクトリの所有権を調整
 if [ "$PUID" != "0" ]; then
-    chown -R "$PUID:$PGID" /etc/edcb /var/local/edcb
+    chown -R "$PUID:$PGID" /etc/edcb /var/local/edcb 2>/dev/null || true
 fi
 
 echo "[entrypoint] Starting EpgTimerSrv..."
 if [ "$PUID" = "0" ]; then
     exec "$@"
 else
-    exec gosu edcb "$@"
+    exec gosu "$PUID:$PGID" "$@"
 fi
